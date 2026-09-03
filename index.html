@@ -333,6 +333,24 @@ $('btnGo').addEventListener('click', async () => {
   btn.disabled = false;
   ready();
 });
+$('btnDl').addEventListener('click', async () => {
+  if (!outBlob) return;
+  try {
+    const file = new File([outBlob], 'bLocket.3105', { type: 'application/octet-stream' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'bLocket.3105' });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(outBlob);
+  a.download = 'bLocket.3105';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+});
 $('btnDonate').addEventListener('click', () => {
   const wrap = $('donateWrap');
   const open = wrap.classList.toggle('open');
