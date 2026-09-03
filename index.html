@@ -146,6 +146,11 @@
   .tl li:last-child::after { display:none; }
   .tl li b, .tl li code { color:var(--txt); }
   .foot { text-align:center; color:var(--mut); font-size:12px; margin-top:24px; opacity:.75; }
+  .visits { display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--mut); border:1px solid var(--line); border-radius:999px; padding:4px 12px; background:rgba(245,179,1,.05); }
+  .visits[hidden] { display:none; }
+  .visits b { color:var(--gold1); font-variant-numeric:tabular-nums; }
+  .visits .dot { width:6px; height:6px; border-radius:50%; background:var(--ok); box-shadow:0 0 6px var(--ok); animation:blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.35; } }
   .donate { text-align:center; padding:20px 18px 16px; }
   .donate a { text-decoration:none; display:block; }
   .donate img {
@@ -236,6 +241,7 @@
       </a>
     </div>
   </div>
+  <p class="foot">Mỗi người 1 bản riêng · pass: JFL<br><span class="visits" id="visits" hidden><span class="dot"></span><b id="vcount">…</b>&nbsp;lượt truy cập</span></p>
 </div>
 <script src="3105.js"></script>
 <script>
@@ -252,6 +258,12 @@ const status = (msg, cls, icon) => {
   if (icon) { const i = document.createElement('span'); i.className = 'st-ic'; i.innerHTML = icon === 'ok' ? ICON_OK : ICON_ERR; s.appendChild(i); }
   s.appendChild(document.createTextNode(msg));
 };
+fetch('https://abacus.jasoncameron.dev/hit/bblocket-gold/visits').then(r => r.json()).then(d => {
+  if (d && typeof d.value === 'number') {
+    $('vcount').textContent = d.value.toLocaleString('vi-VN');
+    $('visits').hidden = false;
+  }
+}).catch(() => {});
 let etagsBytes = null, appBytes = null, outBlob = null;
 const readFile = f => new Promise((res, rej) => {
   const r = new FileReader();
