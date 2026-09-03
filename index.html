@@ -3,139 +3,126 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>b'Locket Gold — Tạo patch theo UID</title>
+<title>b'Locket Gold</title>
 <style>
   :root { --bg:#0f1115; --card:#171b22; --line:#262c38; --txt:#e8ecf3; --mut:#9aa3b5; --acc:#f5c518; --ok:#35c759; --err:#ff453a; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-  .wrap { max-width:640px; margin:0 auto; padding:28px 18px 60px; }
-  h1 { font-size:24px; margin:0 0 4px; }
+  .wrap { max-width:600px; margin:0 auto; padding:24px 16px 50px; }
+  h1 { font-size:23px; margin:0 0 2px; text-align:center; }
   h1 .gold { color:var(--acc); }
-  .sub { color:var(--mut); margin:0 0 22px; font-size:14px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px; }
-  .card h2 { font-size:16px; margin:0 0 6px; }
-  .card p { margin:6px 0; font-size:14px; color:var(--mut); }
-  .card p b { color:var(--txt); }
-  code { background:#0b0e13; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12.5px; word-break:break-all; }
-  input[type=file] { display:block; width:100%; margin-top:10px; font-size:14px; }
-  input[type=text] { width:100%; margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#0b0e13; color:var(--txt); font-size:15px; }
-  button.big { width:100%; padding:14px; font-size:17px; font-weight:700; border:0; border-radius:12px; background:var(--acc); color:#111; cursor:pointer; margin-top:6px; }
-  button.big:disabled { opacity:.45; cursor:wait; }
+  .sub { color:var(--mut); margin:0 0 18px; font-size:13.5px; text-align:center; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px; }
+  .card h2 { font-size:15px; margin:0 0 4px; }
+  .filelabel { display:block; margin-top:8px; padding:12px; border:1.5px dashed var(--line); border-radius:10px; text-align:center; font-size:14px; color:var(--mut); cursor:pointer; }
+  .filelabel.done { border-style:solid; border-color:var(--ok); color:var(--ok); }
+  .filelabel input { display:none; }
+  code { background:#0b0e13; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12px; word-break:break-all; }
+  button.big { width:100%; padding:14px; font-size:17px; font-weight:700; border:0; border-radius:12px; background:var(--acc); color:#111; cursor:pointer; }
+  button.big:disabled { opacity:.4; cursor:not-allowed; }
   button.dl { width:100%; padding:14px; font-size:17px; font-weight:700; border:0; border-radius:12px; background:var(--ok); color:#fff; cursor:pointer; margin-top:10px; display:none; }
-  #status { font-size:14px; margin-top:10px; min-height:22px; }
+  #status { font-size:14px; margin-top:10px; min-height:22px; text-align:center; }
   #status.ok { color:var(--ok); } #status.err { color:var(--err); }
-  #uidbox { display:none; margin-top:10px; font-size:14px; }
-  #uidbox code { color:var(--acc); }
-  ol { margin:8px 0 0; padding-left:20px; font-size:14px; color:var(--mut); }
-  ol li { margin:4px 0; } ol li b { color:var(--txt); }
-  .warn { border-color:#5a4517; background:#1e1a10; }
-  .foot { text-align:center; color:var(--mut); font-size:12px; margin-top:26px; }
+  ol.steps { margin:8px 0 0; padding-left:22px; font-size:14px; color:var(--mut); }
+  ol.steps li { margin:6px 0; } ol.steps li b, ol.steps li code { color:var(--txt); }
+  .foot { text-align:center; color:var(--mut); font-size:12px; margin-top:22px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>b'Locket <span class="gold">Gold</span></h1>
-  <p class="sub">Tạo file patch <code>.3105</code> theo đúng UID của bạn — chạy 100% trên trình duyệt, không upload dữ liệu đi đâu.</p>
+  <p class="sub">Lấy 2 file từ app 3105 → dán vào dưới → nhận file patch. Không gửi dữ liệu đi đâu.</p>
+
   <div class="card">
-    <h2>1️⃣ File bắt buộc: etags của RevenueCat</h2>
-    <p>Mở Filza / TrollStore FS, copy file này từ máy:</p>
-    <p><code>/var/mobile/Containers/Data/Application/&lt;Locket&gt;/Library/Preferences/com.locket.Locket.revenuecat.etags.plist</code></p>
-    <p>UID sẽ <b>tự nhận diện</b> từ file này.</p>
-    <input type="file" id="fEtags" accept=".plist">
-    <div id="uidbox">✅ UID của bạn: <code id="uid"></code></div>
+    <h2>📁 File 1: <code>com.locket.Locket.revenuecat.etags.plist</code></h2>
+    <label class="filelabel" id="lb1">👆 Chạm để chọn file 1<input type="file" id="fEtags" accept=".plist"></label>
   </div>
+
   <div class="card">
-    <h2>2️⃣ File tùy chọn: plist chính của app</h2>
-    <p><code>.../Library/Preferences/com.locket.Locket.plist</code></p>
-    <p>Có file này → patch đủ 3 rules giống bản đã test thành công. Không có → vẫn tạo được 2 rules lõi.</p>
-    <input type="file" id="fApp" accept=".plist">
+    <h2>📁 File 2: <code>com.locket.Locket.plist</code></h2>
+    <label class="filelabel" id="lb2">👆 Chạm để chọn file 2<input type="file" id="fApp" accept=".plist"></label>
   </div>
+
   <div class="card">
-    <h2>3️⃣ Hoặc nhập UID thủ công</h2>
-    <p>Dùng khi không lấy được file (độ bền kém hơn vì thiếu e_tag gốc).</p>
-    <input type="text" id="tUid" placeholder="VD: 7PqJPhH30XQEJrwOfJUazGXrYYy1" autocomplete="off">
-  </div>
-  <div class="card">
-    <h2>4️⃣ Tạo patch</h2>
-    <button class="big" id="btnGo">⚙️ Tạo file .3105</button>
-    <div id="status"></div>
+    <button class="big" id="btnGo" disabled>⚙️ Tạo file .3105</button>
+    <div id="status">Hãy chọn đủ 2 file ở trên ☝️</div>
     <button class="dl" id="btnDl">⬇️ Tải bLocket.3105</button>
   </div>
-  <div class="card warn">
-    <h2>📲 Cách dùng</h2>
-    <ol>
-      <li><b>Force-quit</b> Locket hoàn toàn.</li>
-      <li>Mở app <b>3105</b> → import file vừa tải (pass: <b>JFL</b>).</li>
-      <li>Apply lên <b>Locket</b> → mở app, kiểm tra Gold.</li>
-      <li>Mỗi người <b>1 bản riêng theo UID</b> — không dùng chung file của người khác.</li>
+
+  <div class="card">
+    <h2>📲 Hướng dẫn lấy file (app 3105)</h2>
+    <ol class="steps">
+      <li><b>Bước 1:</b> Vào mục <b>Files</b> trong 3105, chọn <b>App Data Browser</b>.</li>
+      <li><b>Bước 2:</b> Tìm <b>locket</b> trên thanh tìm kiếm, chọn <b>com.locket.Locket</b>.</li>
+      <li><b>Bước 3:</b> Vào <b>Library/Preferences</b>.</li>
+      <li><b>Bước 4:</b> Lưu 2 files:<br><code>com.locket.Locket.plist</code><br><code>com.locket.Locket.revenuecat.etags.plist</code></li>
+      <li><b>Bước 5:</b> Dán từng file vào từng mục chỉ định ở trên.</li>
+      <li><b>Bước 6:</b> Tạo <b>.3105</b> và import vào 3105 (pass: <b>JFL</b>).</li>
+      <li><b>Bước 7:</b> Trải nghiệm nhóooo 🎉</li>
     </ol>
   </div>
-  <p class="foot">b'Locket Gold generator · client-side only · pass mặc định: JFL</p>
+
+  <p class="foot">Mỗi người 1 bản riêng · pass: JFL</p>
 </div>
 <script src="3105.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const status = (msg, cls) => { const s = $('status'); s.textContent = msg; s.className = cls || ''; };
-let etagsBytes = null, appBytes = null, detectedUid = null, outBlob = null;
+let etagsBytes = null, appBytes = null, outBlob = null;
 const readFile = f => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(new Uint8Array(r.result));
   r.onerror = rej;
   r.readAsArrayBuffer(f);
 });
+const ready = () => {
+  const ok = etagsBytes && appBytes;
+  $('btnGo').disabled = !ok;
+  if (ok) status('✅ Đủ 2 file rồi, bấm tạo patch thôi!', 'ok');
+};
 $('fEtags').addEventListener('change', async e => {
-  $('uidbox').style.display = 'none'; detectedUid = null; etagsBytes = null;
+  etagsBytes = null; $('lb1').classList.remove('done');
   const f = e.target.files[0];
   if (!f) return;
   try {
-    etagsBytes = await readFile(f);
-    const obj = parsePlist(etagsBytes);
-    const found = extractUid(obj);
-    if (!found) { status('❌ Không tìm thấy subscriber URL trong file. Kiểm tra đúng file etags chưa.', 'err'); return; }
-    detectedUid = found.uid;
-    $('uid').textContent = detectedUid;
-    $('uidbox').style.display = 'block';
-    status('✅ Đã đọc file, sẵn sàng tạo patch.', 'ok');
-  } catch (err) { status('❌ File lỗi: ' + err.message, 'err'); }
+    const b = await readFile(f);
+    const obj = parsePlist(b);
+    if (!extractUid(obj)) { status('❌ Sai file rồi! Phải là file etags (Bước 4).', 'err'); return; }
+    etagsBytes = b;
+    $('lb1').classList.add('done');
+    $('lb1').firstChild.textContent = '✅ ' + f.name + ' ';
+    status('');
+    ready();
+  } catch (err) { status('❌ File lỗi, chọn lại file khác.', 'err'); }
 });
 $('fApp').addEventListener('change', async e => {
-  appBytes = null;
+  appBytes = null; $('lb2').classList.remove('done');
   const f = e.target.files[0];
   if (!f) return;
   try {
-    appBytes = await readFile(f);
-    parsePlist(appBytes);
-    status('✅ Đã đọc plist app (sẽ đủ 3 rules).', 'ok');
-  } catch (err) { status('❌ File app lỗi: ' + err.message, 'err'); }
+    const b = await readFile(f);
+    parsePlist(b);
+    appBytes = b;
+    $('lb2').classList.add('done');
+    $('lb2').firstChild.textContent = '✅ ' + f.name + ' ';
+    status('');
+    ready();
+  } catch (err) { status('❌ File lỗi, chọn lại file khác.', 'err'); }
 });
 $('btnGo').addEventListener('click', async () => {
   $('btnDl').style.display = 'none'; outBlob = null;
   const btn = $('btnGo');
   btn.disabled = true;
   try {
-    let pkg, uid, rules;
-    const manual = $('tUid').value.trim();
-    if (etagsBytes) {
-      status('⏳ Đang forge + build package (PBKDF2 250k vòng, chờ xíu)...');
-      await new Promise(r => setTimeout(r, 30));
-      ({ uid, pkg, rules } = await forgeFromEtagsFile(etagsBytes, appBytes));
-    } else if (manual) {
-      status('⏳ Đang build từ UID thủ công...');
-      await new Promise(r => setTimeout(r, 30));
-      ({ uid, pkg } = await forgeFromUid(manual));
-      rules = 1;
-    } else {
-      status('❌ Hãy upload file etags hoặc nhập UID.', 'err');
-      btn.disabled = false;
-      return;
-    }
+    status('⏳ Đang tạo patch, chờ xíu...');
+    await new Promise(r => setTimeout(r, 30));
+    const { pkg, rules } = await forgeFromEtagsFile(etagsBytes, appBytes);
     outBlob = new Blob([pkg], { type: 'application/octet-stream' });
-    status(`✅ Xong! UID ${uid} · ${rules} rules · pass JFL. Bấm tải về.`, 'ok');
+    status(`✅ Xong! Patch ${rules} rules · pass JFL.`, 'ok');
     $('btnDl').style.display = 'block';
-  } catch (err) {
-    status('❌ Lỗi: ' + (err.message === 'NO_UID' ? 'không tìm thấy UID trong file.' : err.message), 'err');
-  }
+  } catch (err) { status('❌ Lỗi: ' + err.message, 'err'); }
   btn.disabled = false;
+  ready();
 });
 $('btnDl').addEventListener('click', () => {
   if (!outBlob) return;
