@@ -6,8 +6,6 @@
 
 const MAGIC = new TextEncoder().encode('3105PATCH\0'); // 10 bytes
 const SCHEMA = 3;
-const PASSWORD = 'JFL';
-const KDF_ITERATIONS = 250000;
 const BUNDLE_ID = 'com.locket.Locket';
 const GOLD_PRODUCT = 'locket_1600_1y';
 const EXPIRES_ISO = '2099-12-31T23:59:59Z';
@@ -325,10 +323,6 @@ function parsePlist(buf) {
 
 /* ---------------- crypto ---------------- */
 const te = new TextEncoder();
-async function pbkdf2(pwBytes, salt, iter) {
-  const k = await crypto.subtle.importKey('raw', pwBytes, 'PBKDF2', false, ['deriveBits']);
-  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, k, 256));
-}
 async function aesGcmSeal(keyBytes, pt, aad) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const k = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
@@ -383,7 +377,7 @@ async function buildPackage(files) {
     replacementFilename: f.replacementFilename, replacementData: f.data
   }));
   const project = {
-    id: pkgId, name: "b'Locket", author: 'b', isPrivate: true,
+    id: pkgId, name: "b'Locket", author: 'b', isPrivate: false,
     createdAt: now, updatedAt: now,
     bundleIdentifiers: [BUNDLE_ID], directories: [], rules
   };
@@ -392,14 +386,10 @@ async function buildPackage(files) {
   const payload = bplistEncode({ project, replacementDigests: digests });
   const contentKey = crypto.getRandomValues(new Uint8Array(32));
   const fp = await sha256(contentKey);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const wrapKey = await pbkdf2(te.encode(PASSWORD), salt, KDF_ITERATIONS);
-  const wrapped = await aesGcmSeal(wrapKey, contentKey, te.encode(`3105PATCH/v${SCHEMA}/key/${pkgId}`));
   const encPayload = await aesGcmSeal(contentKey, payload, te.encode(`3105PATCH/v${SCHEMA}/payload/${pkgId}`));
   const envelope = {
-    schemaVersion: SCHEMA, packageID: pkgId, isPasswordProtected: true,
-    keyFingerprint: fp, keyAADVersion: SCHEMA, kdfSalt: salt,
-    kdfIterations: KDF_ITERATIONS, wrappedContentKey: wrapped, encryptedPayload: encPayload
+    schemaVersion: SCHEMA, packageID: pkgId, isPasswordProtected: false,
+    keyFingerprint: fp, publicContentKey: contentKey, encryptedPayload: encPayload
   };
   const body = bplistEncode(envelope);
   const out = new Uint8Array(MAGIC.length + body.length);
@@ -466,5 +456,5 @@ async function forgeFromUid(uid) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { bplistEncode, bplistDecode, parsePlist, buildPackage, forgeFromEtagsFile, forgeFromUid, extractUid, PASSWORD, SCHEMA, BUNDLE_ID };
+  module.exports = { bplistEncode, bplistDecode, parsePlist, buildPackage, forgeFromEtagsFile, forgeFromUid, extractUid, SCHEMA, BUNDLE_ID };
 }
