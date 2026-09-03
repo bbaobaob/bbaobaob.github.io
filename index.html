@@ -110,14 +110,24 @@
   .tl li:last-child::after { display:none; }
   .tl li b, .tl li code { color:var(--txt); }
   .foot { text-align:center; color:var(--mut); font-size:12px; margin-top:24px; opacity:.75; }
+  .donate { text-align:center; padding:20px 18px 16px; }
+  .donate a { text-decoration:none; display:block; }
+  .donate img {
+    width:100%; max-width:340px; border-radius:14px; display:block; margin:0 auto;
+    border:1px solid rgba(245,179,1,.4); box-shadow:0 8px 28px rgba(245,179,1,.15);
+  }
+  .donate span {
+    display:inline-block; margin-top:12px; font-size:15px; font-weight:800;
+    background:linear-gradient(135deg,var(--gold1),var(--gold2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
-    <div class="badge">PATCH GENERATOR</div>
     <h1>b'Locket <span class="gold">Gold</span></h1>
-    <p>Lấy 2 file từ máy → nhận file patch .3105.<br>Mọi thứ chạy ngay trên trình duyệt.</p>
+    <p>làm bởi b (bbaobaob)</p>
   </div>
   <div class="steps-bar"><div id="st1"></div><div id="st2"></div><div id="st3"></div></div>
   <div class="card" id="card1">
@@ -148,10 +158,15 @@
       <li data-n="4">Lưu 2 files:<br><code>com.locket.Locket.plist</code><br><code>com.locket.Locket.revenuecat.etags.plist</code></li>
       <li data-n="5">Dán từng file vào ô 1 và ô 2 ở trên.</li>
       <li data-n="6">Tạo <b>.3105</b> rồi import vào 3105 (pass: <b>JFL</b>).</li>
-      <li data-n="7">Trải nghiệm nhóooo 🎉</li>
+      <li data-n="7">Trải nghiệm nhóooo</li>
     </ol>
   </div>
-  <p class="foot">Mỗi người 1 bản riêng theo UID · pass: JFL</p>
+  <div class="card donate">
+    <a href="https://github.com/bbaobaob">
+      <img src="donate.jpg" alt="Donate - Hỗ trợ em Bảo nha">
+      <span>Hỗ trợ em Bảo nha</span>
+    </a>
+  </div>
 </div>
 <script src="3105.js"></script>
 <script>
