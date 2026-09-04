@@ -44,12 +44,12 @@
   }
   .hero h1 { margin:0; font-size:34px; font-weight:800; letter-spacing:-.5px; }
   .hero h1 .gold {
-    background:linear-gradient(135deg,var(--gold1),var(--gold2) 40%,#fff6d8 50%,var(--gold2) 60%,var(--gold3));
-    background-size:220% auto;
+    background:linear-gradient(110deg,var(--gold3) 0%,var(--gold2) 20%,var(--gold1) 40%,#fff6d8 50%,var(--gold1) 60%,var(--gold2) 80%,var(--gold3) 100%);
+    background-size:200% auto;
     -webkit-background-clip:text; background-clip:text; color:transparent;
-    animation:shine 5.5s linear infinite;
+    animation:shine 4s linear infinite;
   }
-  @keyframes shine { to { background-position:220% center; } }
+  @keyframes shine { from { background-position:0% center; } to { background-position:-200% center; } }
   .hero p { color:var(--mut); font-size:14px; margin:8px 0 0; }
   .steps-bar { display:flex; gap:6px; margin:18px 0 16px; }
   .steps-bar div { flex:1; height:5px; border-radius:99px; background:var(--line); transition:background .3s; }
