@@ -360,11 +360,31 @@ function nowIsoZ() { return new Date().toISOString().replace(/\.\d+Z$/, 'Z'); }
 
 /* ---------------- Locket Gold forge ---------------- */
 function extractUid(etagsObj) {
+  const skip = new Set(['offerings', 'attributes', 'identify', 'product_entitlement_mapping', 'history_window', 'active', 'inactive']);
+  let fallback = null;
   for (const k of Object.keys(etagsObj)) {
-    const m = /\/v1\/subscribers\/([^\/'"?]+)\/?$/.exec(k);
-    if (m) return { uid: m[1], key: k };
+    const m = /\/v1\/subscribers\/([^\/'"]+)\/?$/.exec(k);
+    if (!m) continue;
+    const uid = m[1];
+    if (skip.has(uid)) continue;
+    // Kiem tra key nay phai la entry JSON co data base64 + original_app_user_id == uid
+    try {
+      let v = etagsObj[k];
+      if (v instanceof Uint8Array) v = new TextDecoder().decode(v);
+      if (typeof v !== 'string') continue;
+      const e = JSON.parse(v);
+      if (!e || typeof e.data !== 'string') continue;
+      const sub = JSON.parse(new TextDecoder().decode(b64decode(e.data)));
+      if (sub && sub.subscriber && sub.subscriber.original_app_user_id === uid) {
+        // uu tien entry DA CO entitlements (Locket that) - tra ngay
+        if (Object.keys(sub.subscriber.entitlements || {}).length > 0 || Object.keys(sub.subscriber.subscriptions || {}).length > 0) {
+          return { uid, key: k };
+        }
+        if (!fallback) fallback = { uid, key: k };
+      }
+    } catch (e2) { /* key khong phai subscriber entry, bo qua */ }
   }
-  return null;
+  return fallback;
 }
 function forgeSubscriber(uid, subObj) {
   const now = nowIsoZ();
@@ -417,8 +437,9 @@ async function buildPackage(files) {
 /* Full flow: uploaded etags bytes (+optional app plist bytes) */
 async function forgeFromEtagsFile(etagsBytes, appPlistBytes) {
   const etags = parsePlist(etagsBytes);
+  if (Object.keys(etags).length > 25) throw new Error('SAI_FILE: file nay co qua nhieu key - day khong phai file etags cua Locket. Hay chon file com.locket.Locket.revenuecat.etags.plist');
   const found = extractUid(etags);
-  if (!found) throw new Error('NO_UID');
+  if (!found) throw new Error('NO_UID: khong tim thay subscriber trong file. Kiem tra lai file etags Locket.');
   const { uid, key } = found;
   let entry = etags[key];
   if (entry instanceof Uint8Array) entry = JSON.parse(new TextDecoder().decode(entry));
