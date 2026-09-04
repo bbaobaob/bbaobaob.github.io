@@ -359,40 +359,77 @@ function uuidUpper() {
 function nowIsoZ() { return new Date().toISOString().replace(/\.\d+Z$/, 'Z'); }
 
 /* ---------------- Locket Gold forge ---------------- */
+function parseSubscriberEntry(raw) {
+  // Tra ve { sub, entry } hoac null. Chap nhan: JSON string/bytes co {data base64},
+  // hoac subscriber JSON tho (co san .subscriber).
+  try {
+    let v = raw;
+    if (v instanceof Uint8Array) v = new TextDecoder().decode(v);
+    if (typeof v !== 'string') return null;
+    const e = JSON.parse(v);
+    if (!e || typeof e !== 'object') return null;
+    if (e.subscriber && typeof e.subscriber === 'object') {
+      return { sub: e, entry: e, wrapped: false };
+    }
+    if (typeof e.data !== 'string') return null;
+    const sub = JSON.parse(new TextDecoder().decode(b64decode(e.data)));
+    if (!sub || typeof sub !== 'object' || typeof sub.subscriber !== 'object') return null;
+    return { sub, entry: e, wrapped: true };
+  } catch (e2) { return null; }
+}
 function extractUids(etagsObj) {
   const skip = new Set(['offerings', 'attributes', 'identify', 'product_entitlement_mapping', 'history_window', 'active', 'inactive']);
-  const hits = [];
+  const verified = [];
+  const fallbackUids = [];
   const seen = new Set();
+  const markSeen = uid => { seen.add(uid); };
   for (const k of Object.keys(etagsObj)) {
     const m = /\/v1\/subscribers\/([^\/'"]+)\/?$/.exec(k);
     if (!m) continue;
-    const uid = m[1];
-    if (skip.has(uid) || seen.has(uid)) continue;
-    // Kiem tra key nay phai la entry JSON co data base64 + original_app_user_id == uid
-    try {
-      let v = etagsObj[k];
-      if (v instanceof Uint8Array) v = new TextDecoder().decode(v);
-      if (typeof v !== 'string') continue;
-      const e = JSON.parse(v);
-      if (!e || typeof e.data !== 'string') continue;
-      const sub = JSON.parse(new TextDecoder().decode(b64decode(e.data)));
-      if (sub && sub.subscriber && sub.subscriber.original_app_user_id === uid) {
-        const rich = Object.keys(sub.subscriber.entitlements || {}).length > 0 || Object.keys(sub.subscriber.subscriptions || {}).length > 0;
-        hits.push({ uid, key: k, rich });
-        seen.add(uid);
+    const urlUid = m[1];
+    if (skip.has(urlUid) || seen.has(urlUid)) continue;
+    const parsed = parseSubscriberEntry(etagsObj[k]);
+    if (parsed) {
+      const innerUid = (parsed.sub.subscriber && parsed.sub.subscriber.original_app_user_id) || null;
+      // Chap nhan neu UID trong data khop URL, hoac data khong ghi UID (van dung duoc)
+      const uid = (typeof innerUid === 'string' && innerUid) ? innerUid : urlUid;
+      if (seen.has(uid)) continue;
+      const rich = Object.keys(parsed.sub.subscriber.entitlements || {}).length > 0 || Object.keys(parsed.sub.subscriber.subscriptions || {}).length > 0;
+      verified.push({ uid, key: k, rich, wrapped: parsed.wrapped });
+      markSeen(uid);
+      if (uid !== urlUid) markSeen(urlUid);
+    } else {
+      // Key subscriber nhung khong doc duoc data -> giu UID de fallback forge tu dau
+      if (!seen.has(urlUid)) {
+        fallbackUids.push({ uid: urlUid, key: k });
+        markSeen(urlUid);
       }
-    } catch (e2) { /* key khong phai subscriber entry, bo qua */ }
+    }
   }
   // entry giau (da co entitlements) truoc, fallback sau
-  hits.sort((a, b) => (b.rich ? 1 : 0) - (a.rich ? 1 : 0));
-  return hits;
+  verified.sort((a, b) => (b.rich ? 1 : 0) - (a.rich ? 1 : 0));
+  return { verified, fallbackUids };
 }
 function extractUid(etagsObj) {
   const all = extractUids(etagsObj);
-  return all.length ? all[0] : null;
+  if (all.verified.length) return all.verified[0];
+  if (all.fallbackUids.length) return all.fallbackUids[0];
+  return null;
 }
-function forgeSubscriber(uid, subObj) {
-  const now = nowIsoZ();
+function buildSubscriberFromScratch(uid) {
+  const now = nowIsoZ(), nowMs = Date.now();
+  return {
+    request_date: now, request_date_ms: nowMs,
+    subscriber: {
+      entitlements: { Gold: { expires_date: EXPIRES_ISO, grace_period_expires_date: null, product_identifier: GOLD_PRODUCT, purchase_date: now } },
+      first_seen: now, last_seen: now, management_url: null, non_subscriptions: {},
+      original_app_user_id: uid, original_application_version: null, original_purchase_date: null,
+      other_purchases: {},
+      subscriptions: { [GOLD_PRODUCT]: { billing_issues_detected_at: null, expires_date: EXPIRES_ISO, grace_period_expires_date: null, is_sandbox: false, original_purchase_date: now, ownership_type: 'PURCHASED', period_type: 'normal', purchase_date: now, refunded_at: null, store: 'app_store', unsubscribe_detected_at: null } }
+    }
+  };
+}
+function forgeSubscriber(uid, subObj) {  const now = nowIsoZ();
   const nowMs = Date.now();
   const s = subObj.subscriber;
   s.entitlements = {
@@ -442,21 +479,37 @@ async function buildPackage(files) {
 /* Full flow: uploaded etags bytes (+optional app plist bytes) */
 async function forgeFromEtagsFile(etagsBytes, appPlistBytes) {
   const etags = parsePlist(etagsBytes);
-  const foundAll = extractUids(etags);
-  if (!foundAll.length) throw new Error('NO_UID: không tìm thấy subscriber trong file. Hãy chắc chắn rằng đây là file com.locket.Locket.revenuecat.etags.plist lấy từ app Locket.');
+  const { verified, fallbackUids } = extractUids(etags);
+  if (!verified.length && !fallbackUids.length) throw new Error('NO_UID: không tìm thấy subscriber trong file. Hãy chắc chắn rằng đây là file com.locket.Locket.revenuecat.etags.plist lấy từ app Locket.');
   const rcEntries = {};
-  for (const { uid, key } of foundAll) {
-    let entry = etags[key];
-    const wasBytes = entry instanceof Uint8Array;
-    if (wasBytes) entry = JSON.parse(new TextDecoder().decode(entry));
-    if (typeof entry === 'string') entry = JSON.parse(entry);
-    const subObj = JSON.parse(new TextDecoder().decode(b64decode(entry.data)));
-    forgeSubscriber(uid, subObj);
-    entry.data = b64encode(te.encode(JSON.stringify(subObj)));
-    const outStr = JSON.stringify(entry);
-    etags[key] = wasBytes ? te.encode(outStr) : outStr;
+  const addRc = (uid, subObj) => {
     rcEntries[`com.revenuecat.userdefaults.purchaserInfo.${uid}`] = te.encode(JSON.stringify(subObj));
     rcEntries[`com.revenuecat.userdefaults.purchaserInfoLastUpdated.${uid}`] = new Date();
+  };
+  // 1) Entry doc duoc: forge tai cho (giu nguyen dinh dang goc bytes/string)
+  for (const { uid, key, wrapped } of verified) {
+    let raw = etags[key];
+    const wasBytes = raw instanceof Uint8Array;
+    let entry = wasBytes ? JSON.parse(new TextDecoder().decode(raw)) : (typeof raw === 'string' ? JSON.parse(raw) : raw);
+    let subObj;
+    if (wrapped) {
+      subObj = JSON.parse(new TextDecoder().decode(b64decode(entry.data)));
+      forgeSubscriber(uid, subObj);
+      entry.data = b64encode(te.encode(JSON.stringify(subObj)));
+      const outStr = JSON.stringify(entry);
+      etags[key] = wasBytes ? te.encode(outStr) : outStr;
+    } else {
+      // subscriber JSON tho: forge truc tiep, ghi lai vao etags
+      subObj = entry;
+      forgeSubscriber(uid, subObj);
+      const outStr = JSON.stringify(subObj);
+      etags[key] = wasBytes ? te.encode(outStr) : outStr;
+    }
+    addRc(uid, subObj);
+  }
+  // 2) UID chi thay tren URL ma khong doc duoc data: dung ban dung san tu UID
+  for (const { uid } of fallbackUids) {
+    addRc(uid, buildSubscriberFromScratch(uid));
   }
   const etagsOut = bplistEncode(etags);
   const rcSuite = bplistEncode(rcEntries);
@@ -472,25 +525,16 @@ async function forgeFromEtagsFile(etagsBytes, appPlistBytes) {
     rules.push({ bundleID: BUNDLE_ID, relativePath: 'Library/Preferences/com.locket.Locket.plist', replacementFilename: 'com.locket.Locket.plist', data: bplistEncode(app) });
   }
   const pkg = await buildPackage(rules);
-  const uid = foundAll[0].uid;
-  return { uid, uids: foundAll.map(f => f.uid), pkg, rules: rules.length };
+  const allUids = [...verified.map(f => f.uid), ...fallbackUids.map(f => f.uid)];
+  const uid = allUids[0];
+  return { uid, uids: allUids, pkg, rules: rules.length };
 }
 
 /* Fallback flow: manual UID only (RC suite only, weaker persistence) */
 async function forgeFromUid(uid) {
   uid = uid.trim();
   if (!uid) throw new Error('EMPTY_UID');
-  const now = nowIsoZ(), nowMs = Date.now();
-  const subObj = {
-    request_date: now, request_date_ms: nowMs,
-    subscriber: {
-      entitlements: { Gold: { expires_date: EXPIRES_ISO, grace_period_expires_date: null, product_identifier: GOLD_PRODUCT, purchase_date: now } },
-      first_seen: now, last_seen: now, management_url: null, non_subscriptions: {},
-      original_app_user_id: uid, original_application_version: null, original_purchase_date: null,
-      other_purchases: {},
-      subscriptions: { [GOLD_PRODUCT]: { billing_issues_detected_at: null, expires_date: EXPIRES_ISO, grace_period_expires_date: null, is_sandbox: false, original_purchase_date: now, ownership_type: 'PURCHASED', period_type: 'normal', purchase_date: now, refunded_at: null, store: 'app_store', unsubscribe_detected_at: null } }
-    }
-  };
+  const subObj = buildSubscriberFromScratch(uid);
   const rcSuite = bplistEncode({
     [`com.revenuecat.userdefaults.purchaserInfo.${uid}`]: te.encode(JSON.stringify(subObj)),
     [`com.revenuecat.userdefaults.purchaserInfoLastUpdated.${uid}`]: new Date()
