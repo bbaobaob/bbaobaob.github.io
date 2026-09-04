@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "identifier": "com.bao.blocket",
+  "name": "b'Locket",
+  "description": "b'Locket Gold releases",
+  "packages": [
+    {
+      "identifier": "blocket",
+      "name": "b'Locket",
+      "author": "b",
+      "version": "1.0.5-schema1",
+      "summary": "Locket 𖤐 Cấu Hình Tùy Chỉnh",
+      "description": "★ Tính Năng ★\n\n• Kích hoạt đầy đủ gói Gold.\n• Truy cập đầy đủ tính năng cao cấp.\n• Đồng bộ tùy chọn dùng thử ảnh.\n\n⊹ Trải nghiệm Locket với đầy đủ nội dung cao cấp.",
+      "category": "Social",
+      "tags": [
+        "Application",
+        "Social"
+      ],
+      "publishedAt": "2026-09-03T00:00:00Z",
+      "download": "packages/bLocket.3105",
+      "sha256": "061794267a4c2cc3589d9d258ab6d1b4550320986eaf6a88bb45c640c55f443d",
+      "size": 212743,
+      "supportedOS": [
+        {
+          "minimum": "15.0",
+          "maximum": "18.7.1"
+        },
+        {
+          "minimum": "26.0",
+          "maximum": "26.6.1"
+        },
+        {
+          "minimum": "27.0",
+          "maximum": "27.0",
+          "builds": [
+            "24A5355q",
+            "24A5370h",
+            "24A5380h",
+            "24A5390f"
+          ]
+        }
+      ],
+      "featured": true,
+      "isPrivate": false,
+      "icon": "assets/blocket-full.png",
+      "screenshots": []
+    }
+  ],
+  "icon": "assets/blocket-full.png"
+}
