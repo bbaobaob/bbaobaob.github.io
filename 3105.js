@@ -5,7 +5,7 @@
 'use strict';
 
 const MAGIC = new TextEncoder().encode('3105PATCH\0'); // 10 bytes
-const SCHEMA = 3;
+const SCHEMA = 1;
 const BUNDLE_ID = 'com.locket.Locket';
 const GOLD_PRODUCT = 'locket_1600_1y';
 const EXPIRES_ISO = '2099-12-31T23:59:59Z';

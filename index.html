@@ -36,6 +36,7 @@
   #card1 { animation-delay:.13s; } #card2 { animation-delay:.21s; }
   #card3 { animation-delay:.29s; } .guide { animation-delay:.37s; } .donate { animation-delay:.45s; }
   .hero { text-align:center; padding:14px 0 20px; }
+  .appicon { width:88px; height:88px; border-radius:22px; display:block; margin:0 auto 12px; border:1px solid rgba(245,179,1,.45); box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 0 4px rgba(245,179,1,.08); }
   .badge {
     display:inline-block; font-size:12px; font-weight:700; letter-spacing:.14em;
     color:var(--gold1); border:1px solid rgba(245,179,1,.4); border-radius:999px;
@@ -144,6 +145,8 @@
   }
   .tl li:last-child::after { display:none; }
   .tl li b, .tl li code { color:var(--txt); }
+  .shot img { width:100%; border-radius:14px; display:block; margin:8px auto 2px; border:1px solid rgba(245,179,1,.4); }
+  .vpna { display:inline-block; margin-top:8px; padding:10px 18px; border-radius:12px; font-weight:800; font-size:14px; color:#1a1200 !important; background:linear-gradient(135deg,var(--gold1),var(--gold2)); text-decoration:none; }
   .foot { text-align:center; color:var(--mut); font-size:12px; margin-top:24px; opacity:.75; }
   .visits { display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:12.5px; color:var(--mut); border:1px solid var(--line); border-radius:999px; padding:4px 12px; background:rgba(245,179,1,.05); }
   .visits[hidden] { display:none; }
@@ -194,6 +197,7 @@
 <div class="orb o2"></div>
 <div class="wrap">
   <div class="hero">
+    <img class="appicon" src="locket-icon.jpg" alt="Locket">
     <h1>b'Locket <span class="gold">Gold</span></h1>
     <p>làm bởi b (bbaobaob)</p>
   </div>
@@ -213,6 +217,17 @@
     <button class="big" id="btnGo" disabled>⚙️ Tạo file .3105</button>
     <div id="status">Chọn đủ 2 file ở trên để tiếp tục ☝️</div>
     <button class="dl" id="btnDl">⬇️ Tải bLocket.3105</button>
+  </div>
+  <div class="card guide">
+    <h2>🎥 Mở quay video 10s</h2>
+    <div class="note">⚠️ <b>BẮT BUỘC</b> làm 5 bước này trước thì patch mới mở được quay 10s, không thì chỉ được 5s.</div>
+    <ol class="tl">
+      <li data-n="1"><b>Xóa</b> app Locket đang cài trên máy.</li>
+      <li data-n="2">Vào App Store tải app VPN USA.<br><a class="vpna" href="https://apps.apple.com/vn/app/usa-vpn-private-fast/id6475051414">⬇️ Tải VPN USA</a></li>
+      <li data-n="3">Mở app VPN và <b>bật VPN</b>, sau đó <b>force-kill App Store</b> (vuốt tắt hẳn), mở lại App Store rồi tải <b>Locket</b>.</li>
+      <li data-n="4">Tải xong mở Locket, <b>chấp nhận mọi quyền</b> hiện ra. Thấy mục như ảnh dưới là <b>thành công</b> — chưa thấy thì force-kill Locket, chờ <b>2 phút</b> rồi vào lại.<br><span class="shot"><img src="muc.jpg" alt="Mục Locket Gold"></span></li>
+      <li data-n="5"><b>Tắt VPN</b> rồi làm tiếp hướng dẫn cũ bên dưới 👇</li>
+    </ol>
   </div>
   <div class="card guide">
     <h2>📲 Lấy file bằng app 3105</h2>
@@ -238,7 +253,7 @@
       </a>
     </div>
   </div>
-  <p class="foot"><span class="visits" id="visits" hidden><span class="dot"></span><b id="vcount">…</b>&nbsp;lượt truy cập</span></p>
+  <p class="foot">Mỗi người 1 bản riêng<br><span class="visits" id="visits" hidden><span class="dot"></span><b id="vcount">…</b>&nbsp;lượt truy cập</span></p>
 </div>
 <script src="3105.js"></script>
 <script>
