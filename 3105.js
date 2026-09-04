@@ -359,14 +359,15 @@ function uuidUpper() {
 function nowIsoZ() { return new Date().toISOString().replace(/\.\d+Z$/, 'Z'); }
 
 /* ---------------- Locket Gold forge ---------------- */
-function extractUid(etagsObj) {
+function extractUids(etagsObj) {
   const skip = new Set(['offerings', 'attributes', 'identify', 'product_entitlement_mapping', 'history_window', 'active', 'inactive']);
-  let fallback = null;
+  const hits = [];
+  const seen = new Set();
   for (const k of Object.keys(etagsObj)) {
     const m = /\/v1\/subscribers\/([^\/'"]+)\/?$/.exec(k);
     if (!m) continue;
     const uid = m[1];
-    if (skip.has(uid)) continue;
+    if (skip.has(uid) || seen.has(uid)) continue;
     // Kiem tra key nay phai la entry JSON co data base64 + original_app_user_id == uid
     try {
       let v = etagsObj[k];
@@ -376,15 +377,19 @@ function extractUid(etagsObj) {
       if (!e || typeof e.data !== 'string') continue;
       const sub = JSON.parse(new TextDecoder().decode(b64decode(e.data)));
       if (sub && sub.subscriber && sub.subscriber.original_app_user_id === uid) {
-        // uu tien entry DA CO entitlements (Locket that) - tra ngay
-        if (Object.keys(sub.subscriber.entitlements || {}).length > 0 || Object.keys(sub.subscriber.subscriptions || {}).length > 0) {
-          return { uid, key: k };
-        }
-        if (!fallback) fallback = { uid, key: k };
+        const rich = Object.keys(sub.subscriber.entitlements || {}).length > 0 || Object.keys(sub.subscriber.subscriptions || {}).length > 0;
+        hits.push({ uid, key: k, rich });
+        seen.add(uid);
       }
     } catch (e2) { /* key khong phai subscriber entry, bo qua */ }
   }
-  return fallback;
+  // entry giau (da co entitlements) truoc, fallback sau
+  hits.sort((a, b) => (b.rich ? 1 : 0) - (a.rich ? 1 : 0));
+  return hits;
+}
+function extractUid(etagsObj) {
+  const all = extractUids(etagsObj);
+  return all.length ? all[0] : null;
 }
 function forgeSubscriber(uid, subObj) {
   const now = nowIsoZ();
@@ -437,22 +442,24 @@ async function buildPackage(files) {
 /* Full flow: uploaded etags bytes (+optional app plist bytes) */
 async function forgeFromEtagsFile(etagsBytes, appPlistBytes) {
   const etags = parsePlist(etagsBytes);
-  if (Object.keys(etags).length > 25) throw new Error('SAI_FILE: file nay co qua nhieu key - day khong phai file etags cua Locket. Hay chon file com.locket.Locket.revenuecat.etags.plist');
-  const found = extractUid(etags);
-  if (!found) throw new Error('NO_UID: khong tim thay subscriber trong file. Kiem tra lai file etags Locket.');
-  const { uid, key } = found;
-  let entry = etags[key];
-  if (entry instanceof Uint8Array) entry = JSON.parse(new TextDecoder().decode(entry));
-  if (typeof entry === 'string') entry = JSON.parse(entry);
-  const subObj = JSON.parse(new TextDecoder().decode(b64decode(entry.data)));
-  forgeSubscriber(uid, subObj);
-  entry.data = b64encode(te.encode(JSON.stringify(subObj)));
-  etags[key] = te.encode(JSON.stringify(entry));
+  const foundAll = extractUids(etags);
+  if (!foundAll.length) throw new Error('NO_UID: khong tim thay subscriber trong file. Hay chac chan rang day la file com.locket.Locket.revenuecat.etags.plist lay tu app Locket.');
+  const rcEntries = {};
+  for (const { uid, key } of foundAll) {
+    let entry = etags[key];
+    const wasBytes = entry instanceof Uint8Array;
+    if (wasBytes) entry = JSON.parse(new TextDecoder().decode(entry));
+    if (typeof entry === 'string') entry = JSON.parse(entry);
+    const subObj = JSON.parse(new TextDecoder().decode(b64decode(entry.data)));
+    forgeSubscriber(uid, subObj);
+    entry.data = b64encode(te.encode(JSON.stringify(subObj)));
+    const outStr = JSON.stringify(entry);
+    etags[key] = wasBytes ? te.encode(outStr) : outStr;
+    rcEntries[`com.revenuecat.userdefaults.purchaserInfo.${uid}`] = te.encode(JSON.stringify(subObj));
+    rcEntries[`com.revenuecat.userdefaults.purchaserInfoLastUpdated.${uid}`] = new Date();
+  }
   const etagsOut = bplistEncode(etags);
-  const rcSuite = bplistEncode({
-    [`com.revenuecat.userdefaults.purchaserInfo.${uid}`]: te.encode(JSON.stringify(subObj)),
-    [`com.revenuecat.userdefaults.purchaserInfoLastUpdated.${uid}`]: new Date()
-  });
+  const rcSuite = bplistEncode(rcEntries);
   const rules = [
     { bundleID: BUNDLE_ID, relativePath: 'Library/Preferences/com.revenuecat.user_defaults.plist', replacementFilename: 'com.revenuecat.user_defaults.plist', data: rcSuite },
     { bundleID: BUNDLE_ID, relativePath: 'Library/Preferences/com.locket.Locket.revenuecat.etags.plist', replacementFilename: 'com.locket.Locket.revenuecat.etags.plist', data: etagsOut }
@@ -465,7 +472,8 @@ async function forgeFromEtagsFile(etagsBytes, appPlistBytes) {
     rules.push({ bundleID: BUNDLE_ID, relativePath: 'Library/Preferences/com.locket.Locket.plist', replacementFilename: 'com.locket.Locket.plist', data: bplistEncode(app) });
   }
   const pkg = await buildPackage(rules);
-  return { uid, pkg, rules: rules.length };
+  const uid = foundAll[0].uid;
+  return { uid, uids: foundAll.map(f => f.uid), pkg, rules: rules.length };
 }
 
 /* Fallback flow: manual UID only (RC suite only, weaker persistence) */
@@ -494,5 +502,5 @@ async function forgeFromUid(uid) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { bplistEncode, bplistDecode, parsePlist, buildPackage, forgeFromEtagsFile, forgeFromUid, extractUid, SCHEMA, BUNDLE_ID };
+  module.exports = { bplistEncode, bplistDecode, parsePlist, buildPackage, forgeFromEtagsFile, forgeFromUid, extractUid, extractUids, SCHEMA, BUNDLE_ID };
 }
