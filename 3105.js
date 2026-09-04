@@ -90,7 +90,9 @@ function bplistDecode(buf) {
       v = b.slice(pos, pos + ln);
     } else if (type === 0x50) {
       const [ln, pos] = readLen(obj, at + 1);
-      v = String.fromCharCode(...b.subarray(pos, pos + ln));
+      let s50 = '';
+      for (let i = pos; i < pos + ln; i += 0x8000) s50 += String.fromCharCode.apply(null, b.subarray(i, Math.min(i + 0x8000, pos + ln)));
+      v = s50;
     } else if (type === 0x60) {
       const [ln, pos] = readLen(obj, at + 1);
       let s = '';
@@ -122,6 +124,12 @@ function bplistDecode(buf) {
   return parse(topObj);
 }
 
+/* length prefix for containers/strings/blobs (supports up to 4GB) */
+function lenPrefix(n) {
+  if (n < 256) return [0x10, n];
+  if (n < 65536) return [0x11, (n >> 8) & 255, n & 255];
+  return [0x12, (n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+}
 /* ---------------- binary plist: encode ---------------- */
 function bplistEncode(root) {
   const objs = [];
@@ -160,6 +168,15 @@ function bplistEncode(root) {
       for (let i = 0; i < v.length; i++) dv.setUint16(i * 2, v.charCodeAt(i));
       return objs.push({ blob: buf, str: 'u', ulen: v.length }) - 1;
     }
+    if (typeof v === 'object' && v !== null && typeof v.__uid === 'number' && Object.keys(v).length === 1) {
+      const n = v.__uid;
+      const nb = n >= 0 && n < 256 ? 1 : (n < 65536 ? 2 : 4);
+      const buf = new Uint8Array(nb);
+      if (nb === 1) buf[0] = n;
+      else if (nb === 2) new DataView(buf.buffer).setUint16(0, n);
+      else new DataView(buf.buffer).setUint32(0, n);
+      return objs.push({ t: 0x80 | (nb - 1), raw: buf }) - 1;
+    }
     if (Array.isArray(v)) {
       const refs = v.map(enc);
       return objs.push({ refs }) - 1;
@@ -192,28 +209,28 @@ function bplistEncode(root) {
       if (o.str === 'a') {
         const n = o.blob.length;
         if (n < 15) bytes.push(0x50 | n);
-        else { bytes.push(0x5F); const li = n < 256 ? [0x10, n] : [0x11, (n >> 8) & 255, n & 255]; for (const x of li) bytes.push(x); }
+        else { bytes.push(0x5F); const li = lenPrefix(n); for (const x of li) bytes.push(x); }
         for (const x of o.blob) bytes.push(x);
       } else if (o.str === 'u') {
         const n = o.ulen;
         if (n < 15) bytes.push(0x60 | n);
-        else { bytes.push(0x6F); const li = n < 256 ? [0x10, n] : [0x11, (n >> 8) & 255, n & 255]; for (const x of li) bytes.push(x); }
+        else { bytes.push(0x6F); const li = lenPrefix(n); for (const x of li) bytes.push(x); }
         for (const x of o.blob) bytes.push(x);
       } else {
         const n = o.blob.length;
         if (n < 15) bytes.push(0x40 | n);
-        else { bytes.push(0x4F); const li = n < 256 ? [0x10, n] : [0x11, (n >> 8) & 255, n & 255]; for (const x of li) bytes.push(x); }
+        else { bytes.push(0x4F); const li = lenPrefix(n); for (const x of li) bytes.push(x); }
         for (const x of o.blob) bytes.push(x);
       }
     } else if (o.refs) {
       const n = o.refs.length;
       if (n < 15) bytes.push(0xA0 | n);
-      else { bytes.push(0xAF); const li = n < 256 ? [0x10, n] : [0x11, (n >> 8) & 255, n & 255]; for (const x of li) bytes.push(x); }
+      else { bytes.push(0xAF); const li = lenPrefix(n); for (const x of li) bytes.push(x); }
       for (const r of o.refs) writeRef(bytes, r);
     } else if (o.krefs) {
       const n = o.krefs.length;
       if (n < 15) bytes.push(0xD0 | n);
-      else { bytes.push(0xDF); const li = n < 256 ? [0x10, n] : [0x11, (n >> 8) & 255, n & 255]; for (const x of li) bytes.push(x); }
+      else { bytes.push(0xDF); const li = lenPrefix(n); for (const x of li) bytes.push(x); }
       for (const r of o.krefs) writeRef(bytes, r);
       for (const r of o.vrefs) writeRef(bytes, r);
     }
@@ -251,8 +268,8 @@ function bplistEncode(root) {
 /* ---------------- minimal XML plist parse (for uploaded XML plists) ---------------- */
 function xmlPlistParse(text) {
   const tag = (s, i) => {
-    const m = /^<([a-zA-Z]+)(\s[^>]*)?(\/?)>/.exec(s.slice(i));
-    return m ? { name: m[1], selfClose: !!m[3], len: m[0].length } : null;
+    const m = /^<(\/?)([a-zA-Z]+)(\s[^>]*)?(\/?)>/.exec(s.slice(i));
+    return m ? { name: m[2], selfClose: !!m[4], isClose: !!m[1], len: m[0].length } : null;
   };
   let pos = 0;
   const skipDecl = () => {
@@ -271,7 +288,7 @@ function xmlPlistParse(text) {
     if (!t) throw new Error('xml parse error at ' + pos);
     pos += t.len;
     const inner = () => { const e = text.indexOf('<', pos); const s = text.slice(pos, e); pos = e; return s; };
-    const close = nm => { skipDecl(); const c = tag(text, pos); if (!c || c.name !== nm || c.selfClose) throw new Error('expected </' + nm + '>'); pos += c.len; };
+    const close = nm => { skipDecl(); const c = tag(text, pos); if (!c || !c.isClose || c.name !== nm) throw new Error('expected </' + nm + '>'); pos += c.len; };
     switch (t.name) {
       case 'plist': { const v = parseVal(); close('plist'); return v; }
       case 'dict': {
