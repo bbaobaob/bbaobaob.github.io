@@ -443,7 +443,7 @@ async function buildPackage(files) {
 async function forgeFromEtagsFile(etagsBytes, appPlistBytes) {
   const etags = parsePlist(etagsBytes);
   const foundAll = extractUids(etags);
-  if (!foundAll.length) throw new Error('NO_UID: khong tim thay subscriber trong file. Hay chac chan rang day la file com.locket.Locket.revenuecat.etags.plist lay tu app Locket.');
+  if (!foundAll.length) throw new Error('NO_UID: không tìm thấy subscriber trong file. Hãy chắc chắn rằng đây là file com.locket.Locket.revenuecat.etags.plist lấy từ app Locket.');
   const rcEntries = {};
   for (const { uid, key } of foundAll) {
     let entry = etags[key];
